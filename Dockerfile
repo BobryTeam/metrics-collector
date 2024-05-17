@@ -1,10 +1,8 @@
-FROM python:3.10.14
+FROM python:3.10
 
-WORKDIR /usr/src
+WORKDIR /app
 
-COPY requirements.txt /usr/src
+COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . /usr/src
 
 CMD [ "python", "./metrics_collector.py" ]
