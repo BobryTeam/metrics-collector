@@ -1,5 +1,12 @@
+from typing import Dict
+
+from threading import Thread
 import redis
 from prometheus_api_client import PrometheusConnect
+
+from events.event import *
+from events.kafka_event import *
+
 from metrics.metrics import Metrics
 from microservice.microservice import Microservice
 
@@ -10,7 +17,7 @@ class MetricsCollector(Microservice):
     Его задача -- по запросу от Observer'a собирать метрики из Prometheus и отправлять их в кэш
     '''
 
-    def __init__(self, event_queue: Queue, writers: Dict[str, KafkaEventWriter], prometheus_url: str,redis_host: str, redis_port: int):
+    def __init__(self, event_queue: Queue, prometheus_url: str,redis_host: str, redis_port: int):
         '''
         Инициализация класса:
         - `prometheus_url` - url Prometheus сервера.
