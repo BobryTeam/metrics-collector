@@ -1,10 +1,12 @@
-from threading import Thread
-from threading import Timer
+from typing import Dict
 from queue import Queue
 
-import redis
+from threading import Thread
 
 from prometheus_api_client import PrometheusConnect
+import redis
+
+import time
 
 from events.event import *
 from events.kafka_event import *
@@ -20,7 +22,12 @@ class MetricsCollector(Microservice):
     Его задача -- по запросу от Observer'a собирать метрики из Prometheus и отправлять их в кэш
     '''
 
-    def __init__(self, event_queue: Queue, prometheus_url: str,redis_host: str, redis_port: int):
+    # collect metrics every 60 seconds
+    TIMER_COLLECT_METRCS = 60.0
+    COLLECT_METRICS_TIMES = 5
+
+
+    def __init__(self, event_queue: Queue, writers: Dict[str, KafkaEventWriter], prometheus_url: str, redis_host: str, redis_port: int):
         '''
         Инициализация класса:
         - `self.timer - таймер для сбора метрик`
@@ -63,30 +70,31 @@ class MetricsCollector(Microservice):
                 pass
 
         if target_function is not None:
-            Thread(target=target_function, args=(self.number_metrics)).start()
+            Thread(target=target_function, args=(event.data,)).start()
 
-    def handle_event_get_metrics(self, number_metrics: int):
-        self.timer = Timer(60, self.get_metrics, number_metrics)
-        self.timer.start()
+    def handle_event_get_metrics(self):
+        self.get_metrics(0)
+
+        for current_metrics_count in range(1, self.COLLECT_METRICS_TIMES):
+            time.sleep(self.TIMER_COLLECT_METRCS)
+            self.get_metrics(current_metrics_count)
 
 
     def get_metrics(self, number_metrics: int):
         prom = PrometheusConnect(url=self.prometheus_url)
         metric_values = []
+
         for request in self.requests:
             result = prom.query(request)
             metric_values.append(result['value'])
-        if len(metric_values) == 4:
-            metrics = Metrics(*metric_values)
-        self.save_metrics_to_redis(metrics, number_metrics)
-        
+
+        self.save_metrics_to_redis(Metrics(*metric_values), number_metrics)
+
     def save_metrics_to_redis(self, metrics: Metrics, number_metrics: int):
-        json_data = str(metrics)
-        redis_client = redis.Redis(host=self.redis_host, port = self.redis_port, db=0)
-        key = f'metrics_{number_metrics}'
-        redis_client.set(key, json_data)
-        if (number_metrics == 5):
-            return
-        number_metrics =+ 1
-        self.handle_event_get_metrics(number_metrics)
+        redis_client = redis.Redis(host=self.redis_host, port=self.redis_port)
+
+        json_metrics = str(metrics)
+        key = f'{number_metrics}'
+
+        redis_client.set(key, json_metrics)
 
