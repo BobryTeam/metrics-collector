@@ -1,5 +1,7 @@
 from metrics_collector import MetricsCollector
 
+from redis import Redis
+
 from events.kafka_event import *
 from events.event import *
 
@@ -43,4 +45,4 @@ metrics_collector = MetricsCollector(
     )
 )
 
-metrics_collector.main_thread.join()
+metrics_collector.running_thread.join()
