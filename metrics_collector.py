@@ -41,6 +41,7 @@ class MetricsCollector(Microservice):
         self.redis_host = redis_host
         self.prometheus_url = prometheus_url
         self.redis_port = redis_port
+        self.number_metrics = 1
 
 
         return super().__init__(event_queue, writers)
@@ -58,12 +59,11 @@ class MetricsCollector(Microservice):
                 pass
 
         if target_function is not None:
-            Thread(target=target_function).start()
+            Thread(target=target_function, args=(self.number_metrics)).start()
 
-    def handle_event_get_metrics(self):
-        for i in range(5):
-            self.timer = Timer(60, self.get_metrics(i))
-            self.timer.start()
+    def handle_event_get_metrics(self, number_metrics: int):
+        self.timer = Timer(60, self.get_metrics, number_metrics)
+        self.timer.start()
 
 
     def get_metrics(self, number_metrics: int):
@@ -77,7 +77,12 @@ class MetricsCollector(Microservice):
         self.save_metrics_to_redis(metrics, number_metrics)
         
     def save_metrics_to_redis(self, metrics: Metrics, number_metrics: int):
-        json_data = metrics.str()
+        json_data = str(metrics)
         redis_client = redis.Redis(host=self.redis_host, port = self.redis_port, db=0)
         key = f'metrics_{number_metrics}'
         redis_client.set(key, json_data)
+        if (number_metrics == 5):
+            return
+        number_metrics =+ 1
+        self.handle_event_get_metrics(number_metrics)
+
