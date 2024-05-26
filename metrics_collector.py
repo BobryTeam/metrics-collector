@@ -1,12 +1,16 @@
 from threading import Thread
 from threading import Timer
+from queue import Queue
+
 import redis
+
 from prometheus_api_client import PrometheusConnect
 
 from events.event import *
 from events.kafka_event import *
 
 from metrics.metrics import Metrics
+
 from microservice.microservice import Microservice
 
 
