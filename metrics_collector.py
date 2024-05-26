@@ -1,5 +1,3 @@
-from typing import Dict
-
 from threading import Thread
 from threading import Timer
 import redis
@@ -27,7 +25,7 @@ class MetricsCollector(Microservice):
         - `redis_port` - порт Redis.
         Поля класса:
         - `self.prometheus_url` - url Prometheus сервера.
-        - `self.redis_hort` - хост Redis.
+        - `self.redis_host` - хост Redis.
         - `self.redis_port` - порт Redis
         '''
         self.timer = None
@@ -64,11 +62,11 @@ class MetricsCollector(Microservice):
 
     def handle_event_get_metrics(self):
         for i in range(5):
-            self.timer = Timer(60, self.get_metrics)
+            self.timer = Timer(60, self.get_metrics(i))
             self.timer.start()
 
 
-    def get_metrics(self):
+    def get_metrics(self, number_metrics: int):
         prom = PrometheusConnect(url=self.prometheus_url)
         metric_values = []
         for request in self.requests:
@@ -76,9 +74,10 @@ class MetricsCollector(Microservice):
             metric_values.append(result['value'])
         if len(metric_values) == 4:
             metrics = Metrics(*metric_values)
-        self.save_metrics_to_redis(metrics)
+        self.save_metrics_to_redis(metrics, number_metrics)
         
-    def save_metrics_to_redis(self, metrics: Metrics):
+    def save_metrics_to_redis(self, metrics: Metrics, number_metrics: int):
         json_data = metrics.str()
         redis_client = redis.Redis(host=self.redis_host, port = self.redis_port, db=0)
-        redis_client.set('metrics', json_data)
+        key = f'metrics_{number_metrics}'
+        redis_client.set(key, json_data)
