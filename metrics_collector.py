@@ -4,7 +4,7 @@ from queue import Queue
 from threading import Thread
 
 from prometheus_api_client import PrometheusConnect
-import redis
+from redis import Redis
 
 import time
 
@@ -27,33 +27,28 @@ class MetricsCollector(Microservice):
     COLLECT_METRICS_TIMES = 5
 
 
-    def __init__(self, event_queue: Queue, writers: Dict[str, KafkaEventWriter], prometheus_url: str, redis_host: str, redis_port: int):
+    def __init__(self, event_queue: Queue, writers: Dict[str, KafkaEventWriter], prometheus_url: str, redis: Redis):
         '''
         Инициализация класса:
-        - `self.timer - таймер для сбора метрик`
-        - `prometheus_url` - url Prometheus сервера.
-        - `redis_host` - хост Redis.
-        - `redis_port` - порт Redis.
+        - `prometheus_url` - адрес прометея
+        - `redis` - класс redis
         Поля класса:
-        - `self.prometheus_url` - url Prometheus сервера.
-        - `self.redis_host` - хост Redis.
-        - `self.redis_port` - порт Redis
+        - `self.prometheus_url` - адрес прометея
+        - `self.redis` - класс redis
         '''
-        self.timer = None
         self.requests = ['sum(rate(node_cpu_seconds_total{mode!="idle", job="scaling_target"}[1m]))/' + 
                          'count(rate(node_cpu_seconds_total{mode!="idle", job="scaling_target"}[1m]) > bool 0.05)',
+
                          '1 - ((avg(avg_over_time(node_memory_MemFree_bytes{job="scaling_target"}[1m])) +' + 
                          'avg(avg_over_time(node_memory_Cached_bytes{job="scaling_target"}[1m])) +' +
                          'avg(avg_over_time(node_memory_Buffers_bytes{job="scaling_target"}[1m]))) /' +
                          'avg(avg_over_time(node_memory_MemTotal_bytes{job="scaling_target"}[1m])))',
+
                          'avg(rate(node_network_receive_bytes_total{job="scaling_target"}[1m])) * 8 / 1024 / 1024',
                          'avg(rate(node_network_transmit_bytes_total{job="scaling_target"}[1m])) * 8 / 1024 / 1024', 
         ]
-        self.redis_host = redis_host
+        self.redis = redis
         self.prometheus_url = prometheus_url
-        self.redis_port = redis_port
-        self.number_metrics = 1
-
 
         return super().__init__(event_queue, writers)
 
@@ -79,6 +74,8 @@ class MetricsCollector(Microservice):
             time.sleep(self.TIMER_COLLECT_METRCS)
             self.get_metrics(current_metrics_count)
 
+        self.writers['om'].send_event(Event(EventType.GotMetrics, ''))
+
 
     def get_metrics(self, number_metrics: int):
         prom = PrometheusConnect(url=self.prometheus_url)
@@ -91,10 +88,8 @@ class MetricsCollector(Microservice):
         self.save_metrics_to_redis(Metrics(*metric_values), number_metrics)
 
     def save_metrics_to_redis(self, metrics: Metrics, number_metrics: int):
-        redis_client = redis.Redis(host=self.redis_host, port=self.redis_port)
-
         json_metrics = str(metrics)
         key = f'{number_metrics}'
 
-        redis_client.set(key, json_metrics)
+        self.redis.set(key, json_metrics)
 
