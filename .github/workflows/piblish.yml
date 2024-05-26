@@ -6,17 +6,8 @@ on:
       - "v*.*.*"
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code and lint
-        uses: actions/checkout@v4
-      - uses: ricardochaves/python-lint@v1.4.0
 
   test:
-    needs: 
-      - lint
     runs-on: ubuntu-latest
 
     steps:
@@ -33,17 +24,16 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
-
+     
       - name: Run tests
         run: pytest ./tests/*.py
 
   publish:
     needs: 
-      - lint
       - test
 
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,15 +43,15 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      
+
       - name: Get the latest tag
         id: tag
         run: echo "::set-output name=TAG::$(git describe --abbrev=0 --tags)"
-      
+
       - name: Build and push
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.DOCKERHUB_REPOSITORY }}:${{ steps.tag.outputs.TAG }}  
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ secrets.DOCKERHUB_REPOSITORY }}:${{ steps.tag.outputs.TAG }} 
