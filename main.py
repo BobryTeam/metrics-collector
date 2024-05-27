@@ -8,7 +8,7 @@ from events.event import *
 
 import os
 
-# put the value in a k8s manifest
+# put the values in a k8s manifest
 kafka_bootstrap_server: str | None = os.environ.get('KAFKA_BOOTSTRAP_SERVER')
 prometheus_url: str | None = os.environ.get('PROMETHEUS_URL')
 redis_host: str | None = os.environ.get('REDIS_HOST')

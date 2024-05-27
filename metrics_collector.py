@@ -22,19 +22,21 @@ class MetricsCollector(Microservice):
     Его задача -- по запросу от Observer'a собирать метрики из Prometheus и отправлять их в кэш
     '''
 
-    # collect metrics every 60 seconds
+    # collect metrics every TIMER_COLLECT_METRCS seconds
     TIMER_COLLECT_METRCS = 60.0
+    # collect metrics COLLECT_METRICS_TIMES times
     COLLECT_METRICS_TIMES = 5
 
 
     def __init__(self, event_queue: Queue, writers: Dict[str, KafkaEventWriter], prometheus_connection: PrometheusConnect, redis: Redis):
         '''
         Инициализация класса:
-        - `prometheus_url` - адрес прометея
+        - `prometheus_connection` - подключение к Prometheus
         - `redis` - класс redis
         Поля класса:
-        - `self.prometheus_url` - адрес прометея
-        - `self.redis` - класс redis
+        - `self.requests` - реквесты на PromQL
+        - `self.prometheus_connection` - подключение к Prometheus
+        - `self.redis` - подключение к базе данных Redis
         '''
         self.requests = ['sum(rate(node_cpu_seconds_total{mode!="idle", job="scaling_target"}[1m]))/' + 
                          'count(rate(node_cpu_seconds_total{mode!="idle", job="scaling_target"}[1m]) > bool 0.05)',
@@ -48,8 +50,8 @@ class MetricsCollector(Microservice):
                          'avg(rate(node_network_transmit_bytes_total{job="scaling_target"}[1m])) * 8 / 1024 / 1024', 
         ]
 
-        self.redis = redis
         self.prometheus_connection = prometheus_connection
+        self.redis = redis
 
         return super().__init__(event_queue, writers)
 
@@ -69,16 +71,23 @@ class MetricsCollector(Microservice):
             Thread(target=target_function, args=(event.data,)).start()
 
     def handle_event_get_metrics(self, _event_data):
+        '''
+        Собираем метрики COLLECT_METRICS_TIMES раз
+        '''
         self.get_metrics(0)
 
         for current_metrics_count in range(1, self.COLLECT_METRICS_TIMES):
             time.sleep(self.TIMER_COLLECT_METRCS)
             self.get_metrics(current_metrics_count)
 
+        # ура метрики собраны!
         self.writers['om'].send_event(Event(EventType.GotMetrics, ''))
 
 
     def get_metrics(self, metrics_index: int):
+        '''
+        Собираем метрики единоразово
+        '''
         metric_values = []
 
         for request in self.requests:
