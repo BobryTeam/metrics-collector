@@ -84,7 +84,7 @@ class MetricsCollector(Microservice):
         for request in self.requests:
             result = self.prometheus_connection.custom_query(request)
             if len(result) == 0: raise RuntimeError(f'No such metric in Prometheus: {request}')
-            metric_values.append(result[0]['value'])
+            metric_values.append(result[0]['value'][1]) # ['value'] = (unix_timestamp, actual_value)
 
         return Metrics(*metric_values)
 
