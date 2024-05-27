@@ -23,7 +23,7 @@ class MetricsCollector(Microservice):
     '''
 
     # collect metrics every TIMER_COLLECT_METRCS seconds
-    TIMER_COLLECT_METRCS = 60.0
+    TIMER_COLLECT_METRCS = 10.0
     # collect metrics COLLECT_METRICS_TIMES times
     COLLECT_METRICS_TIMES = 5
 
@@ -74,20 +74,22 @@ class MetricsCollector(Microservice):
         '''
         Собираем метрики COLLECT_METRICS_TIMES раз
         '''
-        self.get_metrics(0)
+        metrics: list[Metrics] = [self.get_metrics(0)]
 
         for current_metrics_count in range(1, self.COLLECT_METRICS_TIMES):
             time.sleep(self.TIMER_COLLECT_METRCS)
-            self.get_metrics(current_metrics_count)
+            metrics.append(self.get_metrics(current_metrics_count))
 
+        self.save_metrics_to_redis(metrics)
         # ура метрики собраны!
         self.writers['om'].send_event(Event(EventType.GotMetrics, ''))
 
 
-    def get_metrics(self, metrics_index: int):
+    def get_metrics(self, metrics_index: int) -> Metrics:
         '''
         Собираем метрики единоразово
         '''
+        print('get metrics!')
         metric_values = []
 
         for request in self.requests:
@@ -95,11 +97,11 @@ class MetricsCollector(Microservice):
             if len(result) == 0: raise RuntimeError(f'No such metric in Prometheus: {request}')
             metric_values.append(result[0]['value'])
 
-        self.save_metrics_to_redis(Metrics(*metric_values), metrics_index)
+        return Metrics(*metric_values)
 
-    def save_metrics_to_redis(self, metrics: Metrics, metrics_index: int):
-        json_metrics = str(metrics)
-        key = f'{metrics_index}'
-
-        self.redis.set(key, json_metrics)
+    def save_metrics_to_redis(self, metrics: list[Metrics]):
+        for i in range(len(metrics)):
+            json_metrics = str(metrics[i])
+            key = f'{i}'
+            self.redis.set(key, json_metrics)
 
