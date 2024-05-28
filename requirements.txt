@@ -1,0 +1,6 @@
+git+https://github.com/BobryTeam/metrics.git@pip-deps
+git+https://github.com/BobryTeam/events.git@pip-deps
+git+https://github.com/BobryTeam/microservice.git@pip-deps
+prometheus_api_client
+kafka-python
+redis
