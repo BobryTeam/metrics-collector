@@ -8,12 +8,9 @@ from redis import Redis
 
 import time
 
-from events.event import *
-from events.kafka_event import *
-
-from metrics.metrics import Metrics
-
-from microservice.microservice import Microservice
+from events import *
+from metrics import Metrics
+from microservice import Microservice
 
 
 class MetricsCollector(Microservice):
