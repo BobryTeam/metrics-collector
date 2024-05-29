@@ -6,7 +6,8 @@ from prometheus_api_client import PrometheusConnect
 
 from metrics_collector import MetricsCollector
 
-from events import *
+from event import *
+from kafka_event import *
 
 from kafka import KafkaConsumer, KafkaProducer
 

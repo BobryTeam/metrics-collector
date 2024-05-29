@@ -1,0 +1,17 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "metrics-collector"
+version = "2024.26.05"
+readme = "README.md"
+description = ""
+authors = ["John Smith <john@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+prometheus-api-client = "^0.5.5"
+redis = "^5.0.4"
+events = {git = "https://github.com/BobryTeam/events.git", branch = "feature/pyproject"}
+microservice = {git = "https://github.com/BobryTeam/microservice.git", branch = "feature/pyproject"}

@@ -1,8 +1,13 @@
-FROM python:3.10
+FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY . .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY pyproject.toml ./
 
-CMD [ "python", "./metrics_collector.py" ]
+RUN python -m pip install --no-cache-dir poetry \
+    && poetry config virtualenvs.create false \
+    && poetry install --no-root --no-interaction --no-ansi
+
+COPY . .
+
+CMD [ "poetry", "run", "python", "./main.py" ]

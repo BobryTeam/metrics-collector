@@ -8,7 +8,8 @@ from redis import Redis
 
 import time
 
-from events import *
+from event import *
+from kafka_event import *
 from metrics import Metrics
 from microservice import Microservice
 
